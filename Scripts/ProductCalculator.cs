@@ -48,7 +48,7 @@ public class ProductCalculator : MonoBehaviour
             Shelf bestShelf = null;
             float minRemainingSpace = float.MaxValue;
 
-            if (product.Width < product.Length) product.Rotate();
+            if (product.Length > product.Width) product.Rotate();
             
             bool fitsNormal = product.Width <= sheetMetalWidth && product.Length <= sheetMetalLenght;
             bool fitsRotated = product.Length <= sheetMetalWidth && product.Width <= sheetMetalLenght;
@@ -143,7 +143,7 @@ public class ProductCalculator : MonoBehaviour
             if (child.TryGetComponent(out ProductData data))
             {
                 
-                ProductItem newItem = new ProductItem(data.Width, data.Length, data.Square, data.Count, data);
+                ProductItem newItem = new ProductItem(data.Width, data.Length, data.Count, data);
 
                 for (int i = 0; i < newItem.Count; i++)
                 {
@@ -151,8 +151,8 @@ public class ProductCalculator : MonoBehaviour
                 }               
             }
         }
-
-        allProducts = allProducts.OrderByDescending(product => product.Square).ToList();
+       
+        allProducts = allProducts.OrderByDescending(product => product.Length).ThenByDescending(p => p.Width).ToList();
     }    
 }
 
