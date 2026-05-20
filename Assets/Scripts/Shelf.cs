@@ -1,25 +1,35 @@
+using System.Collections.Generic;
+
 public class Shelf
 {
-    public float CurrentX { get; private set; }
     public float YPosition { get; private set; }
     public float Height { get; private set; }
-    public float RemainingWidth { get; private set; }
+    public float SheetWidth { get; private set; }
 
-    public Shelf(float yPosition, float height, float totalWidth)
+    public List<RectZone> FreeZones { get; private set; } = new List<RectZone>();
+
+    public Shelf(float yPosition, float height, float sheetWidth)
     {
         YPosition = yPosition;
         Height = height;
-        CurrentX = 0;
-        RemainingWidth = totalWidth;
+        SheetWidth = sheetWidth;
+
+        FreeZones.Add(new RectZone(0, yPosition, sheetWidth, height));
     }
 
-    public void CurrentXChange(ProductItem product)
+    public class RectZone
     {
-        CurrentX += product.Width;
-    }
+        public float X { get; private set; }
+        public float Y { get; private set; }
+        public float Width { get; private set; }
+        public float Height { get; private set; }
 
-    public void RemainingWidthChange(ProductItem product)
-    {
-        RemainingWidth -= product.Width;
+        public RectZone(float x, float y, float width, float height)
+        {
+            X = x; 
+            Y = y; 
+            Width = width; 
+            Height = height;
+        }
     }
 }

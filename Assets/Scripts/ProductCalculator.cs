@@ -29,81 +29,111 @@ public class ProductCalculator : MonoBehaviour
         TryPlaceProducts();
 
         _scrollView.FocusOnSheetMetal();
-    }
+    }    
 
     private void TryPlaceProducts()
-    {     
+    {
         float sheetMetalWidth = _sheetMetal.rect.width;
         float sheetMetalLenght = _sheetMetal.rect.height;
-        List<Shelf> shelves = new List<Shelf>();               
+        List<Shelf> shelves = new List<Shelf>();
+        float minZoneSize = 0.01f;
         float totalUsedHeight = 0;
 
-        foreach (var product in allProducts.GroupBy(p => p.Data)) //
+        foreach (var product in allProducts.GroupBy(p => p.Data))
         {
             product.Key.UpdateDisplay(0);
         }
 
         foreach (ProductItem product in allProducts)
         {
+            Shelf.RectZone bestZone = null;
             Shelf bestShelf = null;
-            float minRemainingSpace = float.MaxValue;
+            float minRemainingWidth = float.MaxValue;
 
             if (product.Length > product.Width) product.Rotate();
-            
+
             bool fitsNormal = product.Width <= sheetMetalWidth && product.Length <= sheetMetalLenght;
             bool fitsRotated = product.Length <= sheetMetalWidth && product.Width <= sheetMetalLenght;
-                      
+
             if (!fitsNormal && !fitsRotated)
             {
-                string message = $"»зделие ({product.Width}x{product.Length}) больше размеров метеллического листа";
+                string message = $"»зделие ({product.Width}x{product.Length}) больше размеров металлического листа";
                 _window.Show(message);
                 return;
             }
 
-            if (product.Width > sheetMetalWidth) product.Rotate();            
+            if (product.Width > sheetMetalWidth) product.Rotate();
 
             foreach (Shelf shelf in shelves)
             {
-                if (product.Width <= shelf.RemainingWidth && product.Length <= shelf.Height)
+                foreach (var zone in shelf.FreeZones)
                 {
-                    float spaceAfter = shelf.RemainingWidth - product.Width;
-
-                    if (spaceAfter < minRemainingSpace)
+                    if (product.Width <= zone.Width && product.Length <= zone.Height)
                     {
-                        minRemainingSpace = spaceAfter;
-                        bestShelf = shelf;
+                        float spaceAfterWidth = zone.Width - product.Width;
+
+                        if (spaceAfterWidth < minRemainingWidth)
+                        {
+                            minRemainingWidth = spaceAfterWidth;
+                            bestZone = zone;
+                            bestShelf = shelf;
+                        }
                     }
                 }
             }
 
-            if (bestShelf != null)
+            if (bestZone != null && bestShelf != null)
             {
-                CreateVisualProduct(bestShelf.CurrentX, bestShelf.YPosition, product);
+                CreateVisualProduct(bestZone.X, bestZone.Y, product);
 
-                bestShelf.CurrentXChange(product);               
-                bestShelf.RemainingWidthChange(product);   
+                float originalX = bestZone.X;
+                float originalY = bestZone.Y;
+                float originalWidth = bestZone.Width;
+                float originalHeight = bestZone.Height;
 
-                product.Data.AddOne();                
+                bestShelf.FreeZones.Remove(bestZone);
+
+                if (originalWidth - product.Width > minZoneSize)
+                {
+                    bestShelf.FreeZones.Add(new Shelf.RectZone(originalX + product.Width, originalY, originalWidth - product.Width, product.Length));
+                }
+
+                if (originalHeight - product.Length > minZoneSize)
+                {
+                    bestShelf.FreeZones.Add(new Shelf.RectZone(originalX, originalY + product.Length, originalWidth, originalHeight - product.Length));
+                }
+
+                product.Data.AddOne();
             }
             else
             {                
                 if (totalUsedHeight + product.Length > sheetMetalLenght)
                 {
-                    _window.Show($"Ќе удалось разместить изделие ({product.Width}x{product.Length}), лист заполнен");
-                    return;
+                    Debug.Log($" рупное изделие ({product.Width}x{product.Length}) не поместилось, ищем место дл€ следующего");
+                    continue;
                 }
 
                 Shelf newShelf = new Shelf(totalUsedHeight, product.Length, sheetMetalWidth);
+                Shelf.RectZone targetZone = newShelf.FreeZones[0];
 
-                CreateVisualProduct(newShelf.CurrentX, newShelf.YPosition, product);
+                CreateVisualProduct(targetZone.X, targetZone.Y, product);
 
-                newShelf.CurrentXChange(product);                
-                newShelf.RemainingWidthChange(product);                
+                newShelf.FreeZones.Remove(targetZone);
+
+                if (sheetMetalWidth - product.Width > minZoneSize)
+                {
+                    newShelf.FreeZones.Add(new Shelf.RectZone(product.Width, totalUsedHeight, sheetMetalWidth - product.Width, product.Length));
+                }
+                
+                if (newShelf.Height - product.Length > minZoneSize)
+                {
+                    newShelf.FreeZones.Add(new Shelf.RectZone(0, totalUsedHeight + product.Length, sheetMetalWidth, newShelf.Height - product.Length));
+                }
 
                 shelves.Add(newShelf);
                 totalUsedHeight += product.Length;
 
-                product.Data.AddOne();                
+                product.Data.AddOne();
             }
         }
     }
